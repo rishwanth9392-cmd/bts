@@ -1,0 +1,10 @@
+[build]
+  command = "pnpm --filter=@bts/web... build"
+  publish = "apps/web/.next"
+
+[build.environment]
+  NODE_VERSION = "20"
+  PNPM_FLAGS = "--no-frozen-lockfile"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
