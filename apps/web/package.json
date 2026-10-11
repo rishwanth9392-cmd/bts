@@ -1,0 +1,29 @@
+{
+  "name": "@bts/web",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --port 3000",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint . --ext .ts,.tsx",
+    "clean": "rm -rf .next .turbo node_modules"
+  },
+  "dependencies": {
+    "@bts/shared": "workspace:*",
+    "@bts/ui": "workspace:*",
+    "jose": "^6.2.12",
+    "leaflet": "^1.9.4",
+    "next": "^16.3.8",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "socket.io-client": "^4.8.4"
+  },
+  "devDependencies": {
+    "@types/leaflet": "^1.9.22",
+    "@types/node": "26.6.4",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "typescript": "^5.5.0"
+  }
+}

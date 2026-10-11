@@ -1,36 +1,138 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🚌 BTS — College Bus Tracking System
+
+Real-time bus tracking platform for college campuses. Students track buses live on a map, drivers broadcast their location, and administrators manage routes, schedules, and fleet health — all from a single monorepo.
+
+---
+
+## Architecture Overview
+
+```
+bts/
+├── apps/
+│   ├── web/            → Next.js 14 web dashboard (App Router)
+│   └── api/            → Node.js REST + WebSocket API
+├── packages/
+│   ├── shared/         → Shared types, constants & utilities
+│   ├── ui/             → Shared React component library
+│   └── database/       → Prisma schema & client
+├── docker-compose.yml  → Local PostgreSQL 15
+├── turbo.json          → Turborepo pipeline config
+├── tsconfig.json       → Root TypeScript config
+├── .eslintrc.js        → Root ESLint config
+├── .prettierrc         → Prettier formatting rules
+├── .env.example        → Environment variable template
+└── package.json        → Workspace root
+```
+
+### Apps
+
+| App | Path | Description | Port |
+|-----|------|-------------|------|
+| **Web** | `apps/web` | Next.js dashboard — live map, route viewer, admin panel | `3000` |
+| **API** | `apps/api` | REST API + WebSocket server for real-time location streaming | `4000` |
+
+### Packages
+
+| Package | Path | Description |
+|---------|------|-------------|
+| **@bts/shared** | `packages/shared` | TypeScript types, constants, and pure utility functions shared by web & API |
+| **@bts/ui** | `packages/ui` | Reusable React components (buttons, cards, map overlays, etc.) |
+| **@bts/database** | `packages/database` | Prisma schema, migrations, seed scripts, and a singleton client export |
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Monorepo | [Turborepo](https://turbo.build/repo) |
+| Frontend | [Next.js 14](https://nextjs.org/) (App Router, React Server Components) |
+| Backend | Node.js + Express / Fastify |
+| Real-time | WebSockets (Socket.IO) |
+| Database | PostgreSQL 15 |
+| ORM | [Prisma](https://www.prisma.io/) |
+| Auth | JWT (access + refresh tokens) |
+| Maps | Leaflet / Mapbox GL JS |
+| Styling | Tailwind CSS |
+| Linting | ESLint + Prettier |
+| Language | TypeScript 5 (strict mode) |
+
+---
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- **Node.js** ≥ 18
+- **npm** ≥ 10 (ships with Node 18+)
+- **Docker** & **Docker Compose** (for the local PostgreSQL database)
+
+### 1. Clone & install
+
+```bash
+git clone <repo-url> bts
+cd bts
+npm install
+```
+
+### 2. Configure environment
+
+```bash
+cp .env.example .env
+# Edit .env and fill in your secrets (see .env.example for docs)
+```
+
+### 3. Start the database
+
+```bash
+docker compose up -d
+```
+
+### 4. Push the Prisma schema & generate the client
+
+```bash
+npm run db:push
+npm run db:generate
+```
+
+### 5. Run all apps in dev mode
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+This launches **Turborepo** which starts the web app on `http://localhost:3000` and the API on `http://localhost:4000` simultaneously with hot-reload.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Scripts
 
-## Learn More
+All scripts are run from the **repo root** via Turborepo:
 
-To learn more about Next.js, take a look at the following resources:
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start all apps in development mode |
+| `npm run build` | Build all apps and packages |
+| `npm run lint` | Lint the entire monorepo |
+| `npm run format` | Format all files with Prettier |
+| `npm run format:check` | Check formatting without writing |
+| `npm run db:generate` | Generate the Prisma client |
+| `npm run db:push` | Push the Prisma schema to the database |
+| `npm run db:studio` | Open Prisma Studio (DB GUI) |
+| `npm run clean` | Remove all build artifacts and `node_modules` |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Project Conventions
 
-## Deploy on Vercel
+- **Strict TypeScript** — `strict: true` everywhere; no `any` without justification.
+- **Path aliases** — Import internal packages as `@bts/shared`, `@bts/ui`, `@bts/database`.
+- **Consistent formatting** — Prettier runs on save and in CI.
+- **Conventional Commits** — `feat:`, `fix:`, `chore:`, `docs:`, etc.
+- **No hardcoded secrets** — All sensitive values live in `.env` (git-ignored).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## License
+
+Private — All rights reserved.

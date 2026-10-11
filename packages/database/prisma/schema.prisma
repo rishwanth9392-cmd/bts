@@ -1,0 +1,338 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// -----------------------------------------
+// ENUMS
+// -----------------------------------------
+
+enum Role {
+  STUDENT
+  DRIVER
+  ADMIN
+}
+
+enum BusStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+}
+
+enum TripStatus {
+  SCHEDULED
+  READY
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum BoardingStatus {
+  PENDING
+  CONFIRMED
+  MISSED
+  CANCELLED
+}
+
+enum BoardingMethod {
+  APP
+  QR
+  MANUAL
+}
+
+enum BoardingEventType {
+  BOARD
+  DROP
+}
+
+enum MaintenanceCategory {
+  ENGINE
+  TIRES
+  ELECTRICAL
+  GENERAL
+}
+
+enum MaintenanceStatus {
+  REPORTED
+  IN_PROGRESS
+  RESOLVED
+}
+
+
+// -----------------------------------------
+// USER & PERSONA MODELS
+// -----------------------------------------
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String?
+  refreshToken String?
+  role         Role     @default(STUDENT)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  student       Student?
+  driver        Driver?
+  notifications Notification[]
+  auditLogs     AuditLog[]
+  adminAudits   AdminAudit[]
+}
+
+model Student {
+  id     String    @id @default(cuid())
+  userId String    @unique
+  user   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  usn    String    @unique
+  dob    DateTime?
+  phone  String?
+  active Boolean   @default(true)
+
+  pickupAssignment PickupAssignment?
+  boardings   BoardingEvent[]
+}
+
+model Driver {
+  id            String  @id @default(cuid())
+  userId        String  @unique
+  user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String?
+  licenseNumber String  @unique
+  phone         String?
+  active        Boolean @default(true)
+  isActive      Boolean @default(true)
+
+  trips Trip[]
+  audits TripAudit[]
+}
+
+// -----------------------------------------
+// FLEET & ROUTES
+// -----------------------------------------
+
+model Bus {
+  id          String    @id @default(cuid())
+  plateNumber String    @unique
+  capacity    Int
+  model       String?
+  status      BusStatus @default(ACTIVE)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  trips           Trip[]
+  locationHistory LocationHistory[]
+  maintenances    BusMaintenance[]
+}
+
+model Route {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  routeStops  RouteStop[]
+  trips       Trip[]
+  assignments PickupAssignment[]
+}
+
+model Stop {
+  id          String  @id @default(cuid())
+  name        String
+  lat         Float?
+  lng         Float?
+  description String?
+
+  routeStops  RouteStop[]
+  geofence    Geofence?
+  assignments PickupAssignment[]
+  boardings   BoardingEvent[]
+}
+
+model RouteStop {
+  id               String @id @default(cuid())
+  routeId          String
+  route            Route  @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  stopId           String
+  stop             Stop   @relation(fields: [stopId], references: [id], onDelete: Cascade)
+  sequence         Int
+  scheduledTime    String?
+
+  @@unique([routeId, sequence])
+}
+
+// -----------------------------------------
+// TRIPS & TRACKING
+// -----------------------------------------
+
+model Trip {
+  id        String     @id @default(cuid())
+  busId     String
+  bus       Bus        @relation(fields: [busId], references: [id])
+  routeId   String
+  route     Route      @relation(fields: [routeId], references: [id])
+  driverId  String
+  driver    Driver     @relation(fields: [driverId], references: [id])
+  status    TripStatus @default(SCHEDULED)
+  startTime DateTime?
+  endTime   DateTime?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  locationHistory LocationHistory[]
+  boardings       BoardingEvent[]
+  audits          TripAudit[]
+}
+
+model LocationHistory {
+  id         String   @id @default(cuid())
+  tripId     String
+  trip       Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  busId      String
+  bus        Bus      @relation(fields: [busId], references: [id], onDelete: Cascade)
+  latitude   Float
+  longitude  Float
+  speed      Float?
+  heading    Float?
+  accuracy   Float?
+  recordedAt DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([tripId, recordedAt(sort: Desc)])
+}
+
+model Geofence {
+  id     String  @id @default(cuid())
+  stopId String  @unique
+  stop   Stop    @relation(fields: [stopId], references: [id], onDelete: Cascade)
+  lat    Float
+  lng    Float
+  radius Float
+  active Boolean @default(true)
+}
+
+// -----------------------------------------
+// EVENT-SOURCED BOARDING
+// -----------------------------------------
+
+model PickupAssignment {
+  id        String   @id @default(cuid())
+  studentId String   @unique
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  routeId   String
+  route     Route    @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  stopId    String
+  stop      Stop     @relation(fields: [stopId], references: [id], onDelete: Cascade)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model BoardingEvent {
+  id        String            @id @default(cuid())
+  studentId String
+  student   Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  tripId    String
+  trip      Trip              @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  stopId    String?
+  stop      Stop?             @relation(fields: [stopId], references: [id], onDelete: Cascade)
+  method    BoardingMethod
+  status    BoardingStatus    @default(CONFIRMED)
+  type      BoardingEventType
+  timestamp DateTime          @default(now())
+
+  @@index([studentId, tripId, type])
+  @@index([tripId, type])
+}
+
+// -----------------------------------------
+// SYSTEM OPERATIONS
+// -----------------------------------------
+
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  message   String
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+  metadata  Json?
+
+  @@index([userId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action     String
+  entityType String
+  entityId   String
+  metadata   Json?
+  timestamp  DateTime @default(now())
+}
+
+model TripAudit {
+  id              String    @id @default(cuid())
+  tripId          String
+  trip            Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  driverId        String
+  driver          Driver    @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  action          String
+  timestamp       DateTime  @default(now())
+  metadata        Json?
+  acknowledgedAt  DateTime?
+  acknowledgedBy  String?
+  resolutionNotes String?
+  resolvedAt      DateTime?
+
+  @@index([tripId])
+  @@index([driverId])
+  @@index([action])
+  @@index([action, acknowledgedAt])
+}
+
+model AdminAudit {
+  id         String   @id @default(cuid())
+  adminId    String
+  admin      User     @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  action     String
+  targetType String
+  targetId   String
+  timestamp  DateTime @default(now())
+  metadata   Json?
+
+  @@index([adminId])
+  @@index([targetType, targetId])
+  @@index([timestamp])
+}
+
+model BusMaintenance {
+  id           String              @id @default(cuid())
+  busId        String
+  bus          Bus                 @relation(fields: [busId], references: [id], onDelete: Cascade)
+  category     MaintenanceCategory
+  description  String
+  status       MaintenanceStatus   @default(REPORTED)
+  reportedAt   DateTime            @default(now())
+  resolvedAt   DateTime?
+  notes        String?
+  reportedById String?
+  resolvedById String?
+  dueDate      DateTime?
+
+  @@index([busId])
+  @@index([status])
+}
+
+
